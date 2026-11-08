@@ -131,6 +131,57 @@ sudo systemctl status incident-api
 curl http://127.0.0.1:8000/api/health
 
 
+//Configure Nginx as a reverse proxy(Gunicorn is listening only on 127.0.0.1:8000. Nginx will expose the API to the network.)
+sudo nano /etc/nginx/sites-available/incident-api
+//Add
+server {
+    listen 80;
+    server_name YOUR_SERVER_IP;
+
+    client_max_body_size 10M;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+}
+
+//Enable configuration
+sudo ln -s \
+    /etc/nginx/sites-available/incident-api \
+    /etc/nginx/sites-enabled/incident-api
+
+sudo ln -s \
+    /etc/nginx/sites-available/incident-api \
+    /etc/nginx/sites-enabled/incident-api
+
+sudo nginx -t
+
+//Restart nginx
+sudo systemctl enable nginx
+sudo systemctl restart nginx
+//Test via nginx
+curl http://YOUR_SERVER_IP/api/health
+
+//Configure firewall
+sudo ufw allow OpenSSH
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw enable
+sudo ufw status
+
+
+
+
+
 
 
 

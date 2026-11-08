@@ -1,5 +1,6 @@
 from flask import Flask
 import os
+from flask_cors import CORS
 
 from app.config import (
     DevelopmentConfig,
@@ -38,6 +39,19 @@ def create_app(environment=None):
 
     # Load configuration
     app.config.from_object(config_class)
+
+
+    # cors
+    CORS(
+        app,
+        resources={
+            r"/api/*": {
+                "origins": [
+                    "http://localhost:5500"
+                ]
+            }
+        }
+    )
 
     # Initialize extensions
     db.init_app(app)

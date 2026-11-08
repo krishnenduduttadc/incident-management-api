@@ -1,0 +1,857 @@
+Test DB:
+PGPASSWORD='local_dev_password_123' psql -h localhost      -p 5432      -U incident_app      -d incidentdb      -c "SELECT current_database(), current_user;"
+
+
+Start Server:
+uv run python run.py
+
+
+
+INCIDENT MANAGEMENT SYSTEM API:
+# REST API – FRONTEND INTEGRATION GUIDE
+
+Base URL:
+http://localhost:5000/api
+
+Content-Type:
+application/json
+
+============================================================
+0. COMMON SETUP
+============================================================
+
+All examples use curl. For convenience, define:
+
+```bash
+BASE_URL="http://localhost:5000/api"
+```
+
+For requests with JSON bodies, use:
+
+```bash
+-H "Content-Type: application/json"
+```
+
+Replace IDs such as `1`, `2`, and `3` with actual database IDs returned by the APIs.
+
+============================================================
+1. HEALTH API
+============================================================
+
+1.1 Check application and database health
+
+Method: GET
+Endpoint: /health
+
+Description:
+Checks whether the Flask application and PostgreSQL database are available.
+
+```bash
+curl -X GET "$BASE_URL/health"
+```
+
+============================================================
+2. USERS API
+============================================================
+
+2.1 Create user
+
+Method: POST
+Endpoint: /users
+
+Description:
+Creates a new user.
+
+```bash
+curl -X POST "$BASE_URL/users" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userid": "user001",
+    "username": "John Smith",
+    "email": "john@example.com",
+    "active": true
+  }'
+```
+
+2.2 Get all users
+
+Method: GET
+Endpoint: /users
+
+Description:
+Returns a paginated list of users.
+
+```bash
+curl -X GET "$BASE_URL/users"
+```
+
+With pagination:
+
+```bash
+curl -X GET "$BASE_URL/users?page=1&per_page=20"
+```
+
+2.3 Get user by ID
+
+Method: GET
+Endpoint: /users/{user_id}
+
+```bash
+curl -X GET "$BASE_URL/users/1"
+```
+
+2.4 Update user
+
+Method: PUT
+Endpoint: /users/{user_id}
+
+Description:
+Updates the supplied fields. This endpoint supports partial updates.
+
+```bash
+curl -X PUT "$BASE_URL/users/1" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "John Updated",
+    "email": "john.updated@example.com",
+    "active": true
+  }'
+```
+
+2.5 Delete user
+
+Method: DELETE
+Endpoint: /users/{user_id}
+
+```bash
+curl -X DELETE "$BASE_URL/users/1"
+```
+
+Note:
+Deletion may return HTTP 409 if the user is referenced by incidents, assignments or history.
+
+============================================================
+3. VENDORS API
+============================================================
+
+3.1 Create vendor
+
+Method: POST
+Endpoint: /vendors
+
+```bash
+curl -X POST "$BASE_URL/vendors" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vendorid": "vendor001",
+    "vendordesc": "ABC Technical Services"
+  }'
+```
+
+3.2 Get all vendors
+
+Method: GET
+Endpoint: /vendors
+
+```bash
+curl -X GET "$BASE_URL/vendors"
+```
+
+With pagination:
+
+```bash
+curl -X GET "$BASE_URL/vendors?page=1&per_page=20"
+```
+
+3.3 Get vendor by ID
+
+Method: GET
+Endpoint: /vendors/{vendor_id}
+
+```bash
+curl -X GET "$BASE_URL/vendors/1"
+```
+
+3.4 Update vendor
+
+Method: PUT
+Endpoint: /vendors/{vendor_id}
+
+```bash
+curl -X PUT "$BASE_URL/vendors/1" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vendordesc": "ABC Technical Support Services"
+  }'
+```
+
+3.5 Delete vendor
+
+Method: DELETE
+Endpoint: /vendors/{vendor_id}
+
+```bash
+curl -X DELETE "$BASE_URL/vendors/1"
+```
+
+Note:
+Deletion may return HTTP 409 if the vendor is referenced by incident assignments or history.
+
+============================================================
+4. INCIDENT TYPES API
+============================================================
+
+4.1 Create incident type
+
+Method: POST
+Endpoint: /incident-types
+
+```bash
+curl -X POST "$BASE_URL/incident-types" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type_code": "HARDWARE",
+    "incidentdesc": "Hardware Issue"
+  }'
+```
+
+4.2 Get all incident types
+
+Method: GET
+Endpoint: /incident-types
+
+```bash
+curl -X GET "$BASE_URL/incident-types"
+```
+
+4.3 Get incident type by ID
+
+Method: GET
+Endpoint: /incident-types/{type_id}
+
+```bash
+curl -X GET "$BASE_URL/incident-types/1"
+```
+
+4.4 Update incident type
+
+Method: PUT
+Endpoint: /incident-types/{type_id}
+
+```bash
+curl -X PUT "$BASE_URL/incident-types/1" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "incidentdesc": "Hardware and Device Issues"
+  }'
+```
+
+4.5 Delete incident type
+
+Method: DELETE
+Endpoint: /incident-types/{type_id}
+
+```bash
+curl -X DELETE "$BASE_URL/incident-types/1"
+```
+
+============================================================
+5. INCIDENT STATUSES API
+============================================================
+
+5.1 Create incident status
+
+Method: POST
+Endpoint: /incident-statuses
+
+```bash
+curl -X POST "$BASE_URL/incident-statuses" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status_code": "NEW",
+    "status_desc": "New Incident"
+  }'
+```
+
+Recommended status codes to configure:
+
+NEW
+ASSIGNED
+IN_PROGRESS
+ON_HOLD
+CLOSED
+REOPENED
+
+Create each status separately.
+
+5.2 Get all statuses
+
+Method: GET
+Endpoint: /incident-statuses
+
+```bash
+curl -X GET "$BASE_URL/incident-statuses"
+```
+
+5.3 Get status by ID
+
+Method: GET
+Endpoint: /incident-statuses/{status_id}
+
+```bash
+curl -X GET "$BASE_URL/incident-statuses/1"
+```
+
+5.4 Update status
+
+Method: PUT
+Endpoint: /incident-statuses/{status_id}
+
+```bash
+curl -X PUT "$BASE_URL/incident-statuses/1" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status_desc": "Newly Registered Incident"
+  }'
+```
+
+5.5 Delete status
+
+Method: DELETE
+Endpoint: /incident-statuses/{status_id}
+
+```bash
+curl -X DELETE "$BASE_URL/incident-statuses/1"
+```
+
+============================================================
+6. INCIDENT API
+============================================================
+
+6.1 Create incident
+
+Method: POST
+Endpoint: /incidents
+
+Description:
+Creates an incident, creates its initial mapping and records a CREATED event in incident history.
+
+Required fields:
+- incidentsubject
+- created_by
+- initial_status_id
+
+```bash
+curl -X POST "$BASE_URL/incidents" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "incidentsubject": "Production server is down",
+    "incidentdesc": "Application server is not responding",
+    "created_by": 1,
+    "incident_type_id": 1,
+    "priority": "HIGH",
+    "initial_status_id": 1
+  }'
+```
+
+Priority values:
+
+LOW
+MEDIUM
+HIGH
+CRITICAL
+
+6.2 Get all incidents
+
+Method: GET
+Endpoint: /incidents
+
+Description:
+Returns a paginated list of incidents, including their mapping information.
+
+```bash
+curl -X GET "$BASE_URL/incidents"
+```
+
+With pagination:
+
+```bash
+curl -X GET "$BASE_URL/incidents?page=1&per_page=20"
+```
+
+Filter by priority:
+
+```bash
+curl -X GET "$BASE_URL/incidents?priority=HIGH"
+```
+
+6.3 Get incident by ID
+
+Method: GET
+Endpoint: /incidents/{incident_id}
+
+```bash
+curl -X GET "$BASE_URL/incidents/1"
+```
+
+6.4 Update incident
+
+Method: PUT
+Endpoint: /incidents/{incident_id}
+
+Description:
+Updates incident details and records an UPDATED event in incident history.
+
+A valid actor is required.
+
+```bash
+curl -X PUT "$BASE_URL/incidents/1" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "incidentsubject": "Production database server is down",
+    "incidentdesc": "Database connection is failing",
+    "priority": "CRITICAL",
+    "changed_by_user_id": 1,
+    "comments": "Updated after initial investigation"
+  }'
+```
+
+Other supported update fields:
+- incidentsubject
+- incidentdesc
+- incident_type_id
+- priority
+
+6.5 Delete incident
+
+Method: DELETE
+Endpoint: /incidents/{incident_id}
+
+```bash
+curl -X DELETE "$BASE_URL/incidents/1"
+```
+
+Note:
+An incident with an associated mapping or history cannot be physically deleted by this API. The API returns HTTP 409. Consider implementing a soft-delete or archive operation for production.
+
+============================================================
+7. INCIDENT ASSIGNMENT API
+============================================================
+
+7.1 Get incident assignment
+
+Method: GET
+Endpoint: /incidents/{incident_id}/assignment
+
+Description:
+Returns the current assignment information for an incident.
+
+```bash
+curl -X GET "$BASE_URL/incidents/1/assignment"
+```
+
+7.2 Assign incident to a user
+
+Method: PUT
+Endpoint: /incidents/{incident_id}/assignment
+
+Description:
+Assigns an incident to one user.
+
+```bash
+curl -X PUT "$BASE_URL/incidents/1/assignment" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": 2,
+    "assigned_by": 1
+  }'
+```
+
+7.3 Assign incident to a vendor
+
+Method: PUT
+Endpoint: /incidents/{incident_id}/assignment
+
+Description:
+Assigns an incident to one vendor instead of a user.
+
+```bash
+curl -X PUT "$BASE_URL/incidents/1/assignment" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vendor_id": 1,
+    "assigned_by": 1
+  }'
+```
+
+7.4 Reassign incident to another user
+
+Method: PUT
+Endpoint: /incidents/{incident_id}/assignment
+
+```bash
+curl -X PUT "$BASE_URL/incidents/1/assignment" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": 3,
+    "assigned_by": 1
+  }'
+```
+
+7.5 Reassign incident to another vendor
+
+Method: PUT
+Endpoint: /incidents/{incident_id}/assignment
+
+```bash
+curl -X PUT "$BASE_URL/incidents/1/assignment" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vendor_id": 2,
+    "assigned_by": 1
+  }'
+```
+
+7.6 Unassign incident
+
+Method: DELETE
+Endpoint: /incidents/{incident_id}/assignment
+
+Description:
+Removes the current user/vendor assignment. The mapping record remains, and an UNASSIGNED history event is recorded.
+
+```bash
+curl -X DELETE "$BASE_URL/incidents/1/assignment" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "changed_by_user_id": 1,
+    "comments": "Removing current assignment"
+  }'
+```
+
+A vendor can also be the actor:
+
+```bash
+curl -X DELETE "$BASE_URL/incidents/1/assignment" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "changed_by_vendor_id": 1,
+    "comments": "Vendor requested removal"
+  }'
+```
+
+============================================================
+8. INCIDENT STATUS API
+============================================================
+
+8.1 Change incident status
+
+Method: PATCH
+Endpoint: /incidents/{incident_id}/status
+
+Description:
+Changes the incident's current status and records a STATUS_CHANGED history event.
+
+Required field:
+- status_code
+
+User actor example:
+
+```bash
+curl -X PATCH "$BASE_URL/incidents/1/status" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status_code": "IN_PROGRESS",
+    "changed_by_user_id": 1,
+    "comments": "Investigation started"
+  }'
+```
+
+Move incident to ON_HOLD:
+
+```bash
+curl -X PATCH "$BASE_URL/incidents/1/status" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status_code": "ON_HOLD",
+    "changed_by_user_id": 1,
+    "comments": "Waiting for replacement hardware"
+  }'
+```
+
+Close incident:
+
+```bash
+curl -X PATCH "$BASE_URL/incidents/1/status" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status_code": "CLOSED",
+    "changed_by_user_id": 1,
+    "comments": "Issue resolved successfully"
+  }'
+```
+
+Reopen incident:
+
+```bash
+curl -X PATCH "$BASE_URL/incidents/1/status" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status_code": "REOPENED",
+    "changed_by_user_id": 1,
+    "comments": "Issue occurred again"
+  }'
+```
+
+Vendor actor example:
+
+```bash
+curl -X PATCH "$BASE_URL/incidents/1/status" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status_code": "IN_PROGRESS",
+    "changed_by_vendor_id": 1,
+    "comments": "Vendor started troubleshooting"
+  }'
+```
+
+Note:
+The current API validates that the status exists, but does not yet enforce a status-transition state machine.
+
+============================================================
+9. INCIDENT MAPPINGS API
+============================================================
+
+Description:
+Incident mappings represent the current assignment and status of an incident.
+
+Mapping records are created during incident creation. Updates are performed through assignment and status APIs.
+
+9.1 Get all incident mappings
+
+Method: GET
+Endpoint: /incident-mappings
+
+```bash
+curl -X GET "$BASE_URL/incident-mappings"
+```
+
+With pagination:
+
+```bash
+curl -X GET "$BASE_URL/incident-mappings?page=1&per_page=20"
+```
+
+9.2 Get mapping by ID
+
+Method: GET
+Endpoint: /incident-mappings/{mapping_id}
+
+```bash
+curl -X GET "$BASE_URL/incident-mappings/1"
+```
+
+============================================================
+10. INCIDENT HISTORY API
+============================================================
+
+Description:
+Incident history provides an audit trail of incident creation, updates, assignment, reassignment, unassignment and status changes.
+
+History records are created by the corresponding incident APIs. They are not directly updated or deleted.
+
+10.1 Get incident history
+
+Method: GET
+Endpoint: /incidents/{incident_id}/history
+
+```bash
+curl -X GET "$BASE_URL/incidents/1/history"
+```
+
+10.2 Get incident history with pagination
+
+Method: GET
+
+```bash
+curl -X GET "$BASE_URL/incidents/1/history?page=1&per_page=20"
+```
+
+10.3 Filter incident history by action
+
+Method: GET
+
+```bash
+curl -X GET "$BASE_URL/incidents/1/history?action=ASSIGNED"
+```
+
+Other possible action filters include:
+
+CREATED
+UPDATED
+ASSIGNED
+REASSIGNED
+UNASSIGNED
+STATUS_CHANGED
+
+10.4 Get individual history record
+
+Method: GET
+Endpoint: /incident-history/{history_id}
+
+```bash
+curl -X GET "$BASE_URL/incident-history/1"
+```
+
+============================================================
+11. COMPLETE INCIDENT LIFECYCLE – EXAMPLE
+============================================================
+
+The following sequence demonstrates a typical incident workflow.
+
+Step 1: Create incident
+
+```bash
+curl -X POST "$BASE_URL/incidents" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "incidentsubject": "Email service unavailable",
+    "incidentdesc": "Users cannot send or receive emails",
+    "created_by": 1,
+    "incident_type_id": 1,
+    "priority": "HIGH",
+    "initial_status_id": 1
+  }'
+```
+
+Step 2: Assign incident to a user
+
+```bash
+curl -X PUT "$BASE_URL/incidents/1/assignment" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": 2,
+    "assigned_by": 1
+  }'
+```
+
+Step 3: Change status to IN_PROGRESS
+
+```bash
+curl -X PATCH "$BASE_URL/incidents/1/status" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status_code": "IN_PROGRESS",
+    "changed_by_user_id": 2,
+    "comments": "Investigating email service"
+  }'
+```
+
+Step 4: Reassign incident to vendor
+
+```bash
+curl -X PUT "$BASE_URL/incidents/1/assignment" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vendor_id": 1,
+    "assigned_by": 1
+  }'
+```
+
+Step 5: Vendor updates status
+
+```bash
+curl -X PATCH "$BASE_URL/incidents/1/status" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status_code": "IN_PROGRESS",
+    "changed_by_vendor_id": 1,
+    "comments": "Vendor is troubleshooting"
+  }'
+```
+
+Step 6: Close incident
+
+```bash
+curl -X PATCH "$BASE_URL/incidents/1/status" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status_code": "CLOSED",
+    "changed_by_vendor_id": 1,
+    "comments": "Email service restored"
+  }'
+```
+
+Step 7: Retrieve final incident
+
+```bash
+curl -X GET "$BASE_URL/incidents/1"
+```
+
+Step 8: Retrieve complete history
+
+```bash
+curl -X GET "$BASE_URL/incidents/1/history"
+```
+
+============================================================
+12. HTTP RESPONSE CODES
+============================================================
+
+200 OK
+Request completed successfully.
+
+201 Created
+A new record was created successfully.
+
+400 Bad Request
+Invalid request data or missing required fields.
+
+404 Not Found
+Requested record or resource does not exist.
+
+409 Conflict
+Duplicate data, foreign-key constraint violation, or a record that cannot be deleted.
+
+500 Internal Server Error
+Unexpected server-side error.
+
+============================================================
+13. IMPORTANT FRONTEND INTEGRATION NOTES
+============================================================
+
+1. Always send JSON with Content-Type: application/json.
+
+2. Use IDs returned by the APIs. Do not assume IDs are sequential or hardcode them.
+
+3. Load reference data for dropdowns:
+   - GET /users
+   - GET /vendors
+   - GET /incident-types
+   - GET /incident-statuses
+
+4. Incident creation requires:
+   - created_by
+   - initial_status_id
+   - incidentsubject
+
+5. Assignment requires exactly one of:
+   - user_id
+   - vendor_id
+
+6. Assignment also requires assigned_by.
+
+7. Incident update, status change and unassignment require an actor:
+   - changed_by_user_id
+   - OR changed_by_vendor_id
+
+8. Incident history is read-only for frontend users. History is automatically generated by the backend.
+
+9. Mapping changes should be performed through assignment and status endpoints, not direct database updates.
+
+10. The current API examples pass actor IDs in request bodies for development/testing. In production, these actor IDs must come from the authenticated user's server-side identity. Do not trust actor IDs supplied by the browser.
+
+11. The current API does not yet provide authentication/authorization, filtering by user/vendor, sorting, or a status-transition state machine. These should be addressed before production deployment.
+
+
+

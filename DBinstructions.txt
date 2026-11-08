@@ -1,0 +1,109 @@
+ssh YOUR_SSH_USER@YOUR_SERVER_IP
+
+sudo apt update
+sudo apt upgrade -y
+
+//Check programs
+
+sudo apt install -y \
+    curl \
+    wget \
+    git \
+    vim \
+    ufw \
+    ca-certificates \
+    gnupg
+
+//install postgres
+sudo apt install -y postgresql postgresql-contrib
+
+//Check version
+psql --version
+
+//Check the service
+sudo systemctl status postgresql
+
+//Enable PostgreSQL at system startup:
+sudo systemctl enable postgresql
+
+//Start postgres
+sudo systemctl start postgresql
+
+//Check cluster
+sudo pg_lsclusters
+
+
+//Identify PostgreSQL configuration directory
+psql --version
+sudo pg_lsclusters
+
+
+//Configure PostgreSQL for local-only access
+sudo nano /etc/postgresql/$PG_VERSION/main/postgresql.conf
+then find
+#listen_addresses = 'localhost'
+set
+listen_addresses = '127.0.0.1'
+port = 5432
+password_encryption = 'scram-sha-256'
+
+
+//Configure client authentication
+sudo nano /etc/postgresql/$PG_VERSION/main/pg_hba.conf
+# TYPE  DATABASE      USER          ADDRESS         METHOD
+
+local   all           postgres                      peer
+local   all           all                           scram-sha-256
+
+host    all           all           127.0.0.1/32    scram-sha-256
+
+sudo systemctl restart postgresql
+
+//Verify listen address
+sudo systemctl restart postgresql
+expected 127.0.0.1:5432
+
+//Create production database and user
+Connect as PostgreSQL administrator:
+sudo -u postgres psql
+
+-- Create application user
+CREATE ROLE incident_app WITH LOGIN;
+
+-- Create production database
+CREATE DATABASE incidentdb
+    OWNER incident_app;
+
+-- Ensure SCRAM authentication is used
+SET password_encryption = 'scram-sha-256';
+
+-- Set password
+\password incident_app
+
+//Test conection
+psql -h 127.0.0.1 \
+     -p 5432 \
+     -U incident_app \
+     -d incidentdb \
+     -W
+//Test
+SELECT current_database();
+SELECT current_user;
+SELECT version();
+
+
+//Transfer DB creation file in production
+scp ~/path/01-schema.sql YOUR_USERNAME@YOUR_SERVER_IP:/tmp/01-schema.sql
+
+psql -h 127.0.0.1 -U incident_app -d incidentdb -W
+\dt
+SELECT * FROM incident_status;
+SELECT * FROM incident_type;
+
+
+//Configure Ubuntu firewall
+sudo ufw allow OpenSSH
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw enable
+sudo ufw status verbose

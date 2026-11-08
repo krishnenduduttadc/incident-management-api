@@ -1,0 +1,137 @@
+Connect to your production server:
+ssh YOUR_SSH_USER@YOUR_SERVER_IP
+
+//Update ubuntu
+sudo apt update
+sudo apt upgrade -y
+
+//Basic package installation
+sudo apt install -y \
+    curl \
+    git \
+    build-essential \
+    python3 \
+    python3-venv \
+    python3-dev \
+    libpq-dev \
+    nginx \
+    postgresql \
+    postgresql-contrib
+
+//Check versions
+
+python3 --version
+psql --version
+nginx -v
+
+//Connect postgresql
+sudo -u postgres psql
+
+//Create application user
+CREATE USER incident_app WITH PASSWORD 'remote_prod_password_123';
+
+//Test credentials
+PGPASSWORD='remote_prod_password_123' \
+psql -h 127.0.0.1 \
+-p 5432 \
+-U incident_app \
+-d incidentdb \
+-c "SELECT current_database(), current_user;"
+
+
+//Create project directory
+sudo mkdir -p /opt/incident-management-api
+sudo chown incidentapp:incidentapp /opt/incident-management-api
+
+
+//install uv on server
+curl -LsSf https://astral.sh/uv/install.sh | sh4
+which uv
+
+//Copy project from GIT
+git clone YOUR_GITHUB_REPOSITORY_URL /opt/incident-management-api
+
+//Go to the project and install dependencies and create virtual environment
+cd /opt/incident-management-api
+uv sync --no-dev
+.venv/bin/gunicorn --version
+
+
+//Create a directory for production configuration:
+sudo mkdir -p /etc/incident-management
+sudo nano /etc/incident-management/incident-api.env
+
+
+//Test production configuration
+sudo -u incidentapp bash
+cd /opt/incident-management-api
+
+set -a
+source /etc/incident-management/incident-api.env
+set +a
+
+.venv/bin/python -c "
+from app import create_app
+
+app = create_app()
+
+print('Environment:', app.config.get('ENVIRONMENT', 'production'))
+print('Database configured:', bool(app.config.get('SQLALCHEMY_DATABASE_URI')))
+print('Flask application initialized successfully')
+"
+
+
+//Run application using gununicorn
+sudo -u incidentapp \
+    /opt/incident-management-api/.venv/bin/gunicorn \
+    --workers 3 \
+    --bind 127.0.0.1:8000 \
+    run:app
+
+//Configure systemd to run Flask automatically
+sudo nano /etc/systemd/system/incident-api.service
+//Add
+[Unit]
+Description=Incident Management Flask API
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+User=incidentapp
+Group=incidentapp
+
+WorkingDirectory=/opt/incident-management-api
+
+EnvironmentFile=/etc/incident-management/incident-api.env
+
+ExecStart=/opt/incident-management-api/.venv/bin/gunicorn \
+    --workers 3 \
+    --bind 127.0.0.1:8000 \
+    --access-logfile - \
+    --error-logfile - \
+    --timeout 60 \
+    run:app
+
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+
+
+//Reload systemd
+sudo systemctl daemon-reload
+//Auto startup
+sudo systemctl enable incident-api
+//Start app
+sudo systemctl start incident-api
+//Check status
+sudo systemctl status incident-api
+//Test
+curl http://127.0.0.1:8000/api/health
+
+
+
+
+
+
